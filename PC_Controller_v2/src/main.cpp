@@ -33,7 +33,7 @@ void DisplayIP();
 String ipaddress; // Stores the ESP's IP address
 
 // MQTT Broker - Connection ==========================================================================
-const char* mqtt_server = "192.168.1.50";
+const char* mqtt_server = "192.168.1.50"; // Your MQTT broker's IP
 WiFiClient espClient;
 PubSubClient client(espClient);
 #define Output_Topic "esp32/output_topic" 
