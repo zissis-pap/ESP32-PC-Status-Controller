@@ -26,8 +26,8 @@ struct Switches {
 Switches Asus; // Create the switches set instance
 
 // WIFI PARAMETERS ===================================================================================
-const char *ssid = "CYTAA1BD"; // Your router's SSID
-const char *password = "ZTE1G8FJ4702418!E"; // Your router's WiFi password
+const char *ssid = "******"; // Your router's SSID
+const char *password = "******"; // Your router's WiFi password
 void setup_wifi();
 void DisplayIP();
 String ipaddress; // Stores the ESP's IP address
