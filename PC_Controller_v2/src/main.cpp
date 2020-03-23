@@ -27,13 +27,13 @@ Switches Asus; // Create the switches set instance
 
 // WIFI PARAMETERS ===================================================================================
 const char *ssid = "******"; // Your router's SSID
-const char *password = "******"; // Your router's WiFi password
+const char *password = "******; // Your router's WiFi password
 void setup_wifi();
 void DisplayIP();
 String ipaddress; // Stores the ESP's IP address
 
 // MQTT Broker - Connection ==========================================================================
-const char* mqtt_server = "192.168.1.50"; // Your MQTT broker's IP
+const char* mqtt_server = "192.168.1.50";
 WiFiClient espClient;
 PubSubClient client(espClient);
 #define Output_Topic "esp32/output_topic" 
@@ -42,6 +42,7 @@ PubSubClient client(espClient);
 
 void reconnect();
 void callback(char* topic, byte* message, unsigned int length);
+unsigned long mqttReconnect;
 
 // SET DOT LED MATRIX DISPLAY PARAMETERS =============================================================
 #define HARDWARE_TYPE MD_MAX72XX::ICSTATION_HW  // @EB-setup define the type of hardware connected
@@ -160,20 +161,17 @@ void setup() {
   timeClient.setTimeOffset(7200); 
   PassedTime = millis();
   checktime = millis();
+  mqttReconnect = millis();
   mx.clear();
 }
 
 void loop() {
   mx.clear();
-  while (!PC_State && client.connected() && !SwitchState1) {
+  while (!PC_State && !SwitchState1) {
     Off_Mode();
   }
   CheckSwitchState(); 
-  if (!client.connected()) {
-	digitalWrite(Led_BuiltIn, LOW);
-    reconnect();
-  }
-  else digitalWrite(Led_BuiltIn, HIGH);
+  reconnect();
   client.loop();
   CheckPCState();
 }
@@ -218,6 +216,7 @@ void Off_Mode() {
   CheckPCState();
   client.loop();
   DisplayTime();
+  reconnect();
 }
 
 void CheckPCState() {
@@ -378,7 +377,7 @@ void DayStamp() {
 }
 
 void Time(void) {
-  if (checktime <= millis() + 500) {
+  if (checktime <= millis() - 500) {
     while(!timeClient.update()) {
       timeClient.forceUpdate();
     }
@@ -453,20 +452,25 @@ void setup_wifi() { // OK
   TranscodeScroll("WiFi connected", 500);
 }
 
-void reconnect() { // Loop until we're reconnected
-  while (!client.connected()) {
-    mx.clear();
-    TranscodeScroll("Attempting MQTT connection", 250);
-    // Attempt to connect
-    if (client.connect("ESP32_Client")) {
+void reconnect() { // try connection every 30 seconds
+  if (!client.connected()) {
+    if(mqttReconnect <= millis() - 30000) {
+      digitalWrite(Led_BuiltIn, LOW);
       mx.clear();
-      TranscodeScroll("Connected", 250);
-      // Subscribe
-      client.subscribe("esp32/user_input");
-    } else {
-      mx.clear();
-      TranscodeScroll("Connection failed", 500);
-      TranscodeScroll(" - Please check your MQTT broker", 2000);
+      TranscodeScroll("Attempting MQTT connection", 250);
+      // Attempt to connect
+      if (client.connect("ESP32_Client")) {
+        digitalWrite(Led_BuiltIn, HIGH);
+        mx.clear();
+        TranscodeScroll("Connected", 250);
+        // Subscribe
+        client.subscribe("esp32/user_input");
+      } else {
+        mx.clear();
+        TranscodeScroll("Connection failed", 500);
+        TranscodeScroll(" - Please check your MQTT broker", 2000);
+      }
+      mqttReconnect = millis();
     }
   }
 }
