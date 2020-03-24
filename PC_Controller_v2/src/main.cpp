@@ -27,7 +27,7 @@ Switches Asus; // Create the switches set instance
 
 // WIFI PARAMETERS ===================================================================================
 const char *ssid = "******"; // Your router's SSID
-const char *password = "******; // Your router's WiFi password
+const char *password = "******"; // Your router's WiFi password
 void setup_wifi();
 void DisplayIP();
 String ipaddress; // Stores the ESP's IP address
@@ -125,11 +125,11 @@ void DayStamp();
 
 // DISPLAY FUNCTIONS
 void DisplayInfo(String s);
-void TranscodeScroll(String c, unsigned int x);
+void TranscodeScroll(String c, unsigned int x); // Scrolls a string on the display and holds it for x millisecs
 void scrollText(char *p); // Function for text scrolling on DOT LED DISPLAY
 void printText(uint8_t modStart, uint8_t modEnd, char *pMsg); // Function for displaying Text
-void printString(String s);
-void delayAndClear(unsigned int x);
+void printString(String s); // Prints a short string on the display without scrolling
+void delayAndClear(unsigned int x); 
 void ClearInfo();
 unsigned long clearTime; 
 
@@ -167,6 +167,7 @@ void setup() {
 
 void loop() {
   mx.clear();
+  setup_wifi();
   while (!PC_State && !SwitchState1) {
     Off_Mode();
   }
@@ -213,6 +214,7 @@ void callback(char* topic, byte* message, unsigned int length) {
 // SYSTEM POWER FUNCTIONS
 void Off_Mode() {
   DisplayShutdown();
+  setup_wifi();
   CheckPCState();
   client.loop();
   DisplayTime();
@@ -440,16 +442,19 @@ int getYear() {
 
 // CONNECTION FUNCTIONS
 void setup_wifi() { // OK
-  // We start by connecting to a WiFi network
-  TranscodeScroll("Connecting to ", 0);
-  TranscodeScroll(ssid, 0);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    TranscodeScroll(".", 500);
+if (WiFi.status() != WL_CONNECTED) {
+    // We start by connecting to a WiFi network
+    TranscodeScroll("Connecting to ", 0);
+    TranscodeScroll(ssid, 0);
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+      TranscodeScroll(".", 500);
+      CheckSwitchState();
+    }
+    ipaddress = WiFi.localIP().toString();
+    mx.clear();
+    TranscodeScroll("WiFi connected", 500);
   }
-  ipaddress = WiFi.localIP().toString();
-  mx.clear();
-  TranscodeScroll("WiFi connected", 500);
 }
 
 void reconnect() { // try connection every 30 seconds
