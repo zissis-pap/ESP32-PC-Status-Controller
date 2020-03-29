@@ -87,7 +87,9 @@ void IRAM_ATTR Reset() { // Function to Restart the system
 };
 void PowerOnAction(); // Log power on actions
 void PowerOffAction(); // Log power off actions
+void Logger(boolean z); // Logs time and date
 void DisplayShutdown(); // Displays a message if the PC was shutdown through the OS
+void DisplayHistory();
 
 // TIME VARIABLES
 const String Days[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}; 
@@ -98,10 +100,10 @@ uint8_t hoursIndex; // Stores hours
 uint8_t dayIndex; // Stores day of week
 uint8_t monthDay; // Stores day of month
 uint8_t monthIndex; // Stores month
-uint8_t year; // Stores year
+uint16_t year; // Stores year
 
 struct LogData {
-  uint8_t year;
+  uint16_t year;
   uint8_t month;
   uint8_t dayofmonth;
   uint8_t dayofweek;
@@ -109,6 +111,10 @@ struct LogData {
   uint8_t minutes;
   uint8_t seconds;
 };
+
+LogData Boot;
+LogData P_Off;
+boolean OffData = false;
 
 // Variables to save date and time
 String formattedDate;
@@ -123,7 +129,7 @@ int getMonthDay();
 int getYear();
 void DisplayTime();
 void ShowDate();
-void DayStamp();
+String DayStamp(uint8_t day, uint8_t m_day, uint8_t month);
 
 // DISPLAY FUNCTIONS
 void DisplayInfo(String s);
@@ -161,6 +167,7 @@ void setup() {
   // GMT +1 = 3600
   // GMT -1 = -3600
   timeClient.setTimeOffset(7200); 
+  Time();
   mx.clear();
 }
 
@@ -194,11 +201,20 @@ void callback(char* topic, byte* message, unsigned int length) {
     if (messageTemp == "halt") {
       Confirm("halt");
     }
+    if (messageTemp == "timer_true") {
+
+    }
+    if (messageTemp == "timer") {
+      
+    }
     if (messageTemp == "date") {
       ShowDate();
     }
     if (messageTemp == "ip") {
       DisplayIP();
+    }
+    if (messageTemp == "history") {
+      DisplayHistory();
     }
     if (messageTemp == "clear") {
     //  ClearInfo();
@@ -331,6 +347,7 @@ void PowerOnAction() {
     uptime = millis();
     if (hoursIndex > 4 && hoursIndex <= 11) TranscodeScroll("Good morning!", 500);
     else TranscodeScroll("Welcome back!", 500);
+    Logger(true);
     mx.clear();
     Greeting = false;
   }
@@ -344,7 +361,44 @@ void PowerOnAction() {
 void PowerOffAction() {
   if (LastPCState) {
     LastPCState = false;
+    Logger(false);
+    OffData = true;
     DisplayShutdown();
+  }
+}
+
+void Logger(boolean z) {
+  Time();
+  if (z) {
+    Boot.hours = hoursIndex;
+    Boot.minutes = minutesIndex;
+    Boot.seconds = secondsIndex;
+    Boot.dayofweek = dayIndex;
+    Boot.dayofmonth = monthDay;
+    Boot.month = monthIndex;
+  }
+  else if (!z) {
+    P_Off.hours = hoursIndex;
+    P_Off.minutes = minutesIndex;
+    P_Off.seconds = secondsIndex;
+    P_Off.dayofweek = dayIndex;
+    P_Off.dayofmonth = monthDay;
+    P_Off.month = monthIndex;
+  }
+}
+
+void DisplayHistory() {
+  mx.clear();
+  String Stamp = DayStamp(Boot.dayofweek, Boot.dayofmonth, Boot.month);
+  DisplayInfo("Maximus was powered-on on: " + Stamp + ", at: " + (String)Boot.hours + ":" + (String)Boot.minutes + ":" + (String)Boot.seconds);
+  TranscodeScroll("Maximus was powered-on on: " + Stamp + ", at: " + (String)Boot.hours + ":" + (String)Boot.minutes + ":" + (String)Boot.seconds, 500);
+  mx.clear();
+  if (OffData) {
+    Stamp = DayStamp(P_Off.dayofweek, P_Off.dayofmonth, P_Off.month);
+    DisplayInfo("Maximus was powered-off on: " + Stamp + ", at: " + (String)P_Off.hours + ":" + (String)P_Off.minutes + ":" + (String)P_Off.seconds);
+    TranscodeScroll("Maximus was powered-off on: " + Stamp + ", at: " + (String)P_Off.hours + ":" + (String)P_Off.minutes + ":" + (String)P_Off.seconds, 500);
+    ClearInfo();
+    mx.clear();
   }
 }
 
@@ -370,8 +424,8 @@ void ShowDate() {
   boolean Shown = false;
   boolean scrollonce = false;
   Time();
-  DayStamp();
   mx.clear();
+  dayStamp = DayStamp(dayIndex, monthDay, monthIndex);
   DisplayInfo(dayStamp);
   TranscodeScroll("Today is: " + dayStamp, 500);
   unsigned long current_time = millis();
@@ -402,11 +456,13 @@ void DisplayIP() {
   mx.clear();
 }
 
-void DayStamp() {
-  if (monthDay == 1) dayStamp = (String) (Days[dayIndex] + " the " + String(monthDay) + "st of " + Months[monthIndex-1] + " " + year);
-  else if (monthDay == 2) dayStamp = (String) (Days[dayIndex] + " the " + String(monthDay) + "nd of " + Months[monthIndex-1] + " " + year);
-  else if (monthDay == 3) dayStamp = (String) (Days[dayIndex] + " the " + String(monthDay) + "rd of " + Months[monthIndex-1] + " " + year);
-  else dayStamp = (String) (Days[dayIndex] + " the " + String(monthDay) + "th of " + Months[monthIndex-1] + " " + year);
+String DayStamp(uint8_t day, uint8_t m_day, uint8_t month) {
+  String Stamp;
+  if (m_day == 1) Stamp = (String) (Days[day] + " the " + String(m_day) + "st of " + Months[month-1] + " " + year);
+  else if (m_day == 2) Stamp = (String) (Days[day] + " the " + String(m_day) + "nd of " + Months[month-1] + " " + year);
+  else if (m_day == 3) Stamp = (String) (Days[day] + " the " + String(m_day) + "rd of " + Months[month-1] + " " + year);
+  else Stamp = (String) (Days[day] + " the " + String(m_day) + "th of " + Months[month-1] + " " + year);
+  return Stamp;
 }
 
 void Time(void) {
@@ -428,6 +484,7 @@ void Time(void) {
     timeStampFull = formattedDate.substring(splitT+1, formattedDate.length()-1);
     timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-4);
     //secondsIndex = timeClient.getSeconds();
+    secondsIndex = timeClient.getSeconds();
     minutesIndex = timeClient.getMinutes();
     if (lastminute != minutesIndex) {
       hoursIndex = timeClient.getHours();
