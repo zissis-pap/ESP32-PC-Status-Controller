@@ -42,7 +42,6 @@ PubSubClient client(espClient);
 
 void reconnect();
 void callback(char* topic, byte* message, unsigned int length);
-unsigned long mqttReconnect;
 
 // SET DOT LED MATRIX DISPLAY PARAMETERS =============================================================
 #define HARDWARE_TYPE MD_MAX72XX::ICSTATION_HW  // @EB-setup define the type of hardware connected
@@ -69,9 +68,6 @@ boolean ConfirmCalled = false;
 String answer;
 unsigned long checkconfirm;
 
-// Variables to check passed time without using delay
-unsigned long PassedTime;
-
 // SYSTEM POWER FUNCTIONS
 void Off_Mode(); // This function is looped when the PC is off
 void CheckSwitchState(); // It checks if the power and reset buttons have been pushed
@@ -89,23 +85,30 @@ void IRAM_ATTR Power() { // Function to Power On or Off the system
 void IRAM_ATTR Reset() { // Function to Restart the system
   SwitchState2 = true;
 };
+void PowerOnAction(); // Log power on actions
+void PowerOffAction(); // Log power off actions
 void DisplayShutdown(); // Displays a message if the PC was shutdown through the OS
 
 // TIME VARIABLES
 const String Days[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}; 
 const String Months[] = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "Novemer", "December"};
-int secondsIndex; // Stores seconds
-int minutesIndex; // Stores minutes
-int hoursIndex; // Stores hours
-int dayIndex; // Stores day of week
-int monthDay; // Stores day of month
-int monthIndex; // Stores month
-int year; // Stores year
+uint8_t secondsIndex; // Stores seconds
+uint8_t minutesIndex; // Stores minutes
+uint8_t hoursIndex; // Stores hours
+uint8_t dayIndex; // Stores day of week
+uint8_t monthDay; // Stores day of month
+uint8_t monthIndex; // Stores month
+uint8_t year; // Stores year
 
-int lastminute; // 
-int lasthour {25}; //
-int lastday; //
-int lastmonth; //
+struct LogData {
+  uint8_t year;
+  uint8_t month;
+  uint8_t dayofmonth;
+  uint8_t dayofweek;
+  uint8_t hours;
+  uint8_t minutes;
+  uint8_t seconds;
+};
 
 // Variables to save date and time
 String formattedDate;
@@ -113,7 +116,6 @@ String dayStamp;
 String timeStampFull;
 String timeStamp;
 
-unsigned long checktime;
 // TIME FUNCTIONS
 void Time(void);
 int getMonth();
@@ -131,7 +133,6 @@ void printText(uint8_t modStart, uint8_t modEnd, char *pMsg); // Function for di
 void printString(String s); // Prints a short string on the display without scrolling
 void delayAndClear(unsigned int x); 
 void ClearInfo();
-unsigned long clearTime; 
 
 void setup() {
   pinMode(RelaySet.PR_Relay, OUTPUT);
@@ -153,28 +154,27 @@ void setup() {
   mx.clear();
   setup_wifi(); // Set up WIFI
   client.setServer(mqtt_server, 1883); // Set up MQTT broker
+  reconnect();
   client.setCallback(callback);
   timeClient.begin(); // Set up time server
   // Set offset time in seconds to adjust for your timezone, for example:
   // GMT +1 = 3600
   // GMT -1 = -3600
   timeClient.setTimeOffset(7200); 
-  PassedTime = millis();
-  checktime = millis();
-  mqttReconnect = millis();
   mx.clear();
 }
 
 void loop() {
-  mx.clear();
+  //mx.clear();
+  CheckPCState();
   setup_wifi();
+  reconnect();
+  client.loop();
   while (!PC_State && !SwitchState1) {
     Off_Mode();
   }
-  CheckSwitchState(); 
-  reconnect();
-  client.loop();
-  CheckPCState();
+  CheckSwitchState();
+  PowerOnAction();
 }
 
 void callback(char* topic, byte* message, unsigned int length) {
@@ -213,7 +213,7 @@ void callback(char* topic, byte* message, unsigned int length) {
 
 // SYSTEM POWER FUNCTIONS
 void Off_Mode() {
-  DisplayShutdown();
+  PowerOffAction();
   setup_wifi();
   CheckPCState();
   client.loop();
@@ -222,6 +222,7 @@ void Off_Mode() {
 }
 
 void CheckPCState() {
+  static unsigned long PassedTime {0};
   if (PassedTime <= millis() - 1000) {
     if(digitalRead(Asus.RST_State)) {
       PC_State = true;
@@ -319,18 +320,48 @@ void CheckSwitchState() {
   if (SwitchState2) ResetAction();
 }
 
-void DisplayShutdown() {
+void PowerOnAction() {
+  static boolean Greeting = true;
+  static unsigned long uptime {0};
+  if (!PC_State && !Greeting) {
+    Greeting = true;
+    uptime = millis();
+  }
+  if (PC_State && Greeting) {
+    uptime = millis();
+    if (hoursIndex > 4 && hoursIndex <= 11) TranscodeScroll("Good morning!", 500);
+    else TranscodeScroll("Welcome back!", 500);
+    mx.clear();
+    Greeting = false;
+  }
+  static uint32_t	prevTime {0};
+  if (millis()-prevTime >= 2000) {
+    printString("U: " + String((int)(millis()-uptime)/60000) + "'");
+    prevTime = millis();
+  }
+}
+
+void PowerOffAction() {
   if (LastPCState) {
     LastPCState = false;
-    TranscodeScroll("System was Shut Down", 250);
+    DisplayShutdown();
   }
+}
+
+void DisplayShutdown() {
+  TranscodeScroll("System was Shut Down", 250);
+  mx.clear();
+  if (hoursIndex >= 21 || hoursIndex <= 3) TranscodeScroll("Goodnight!", 500);
+  else TranscodeScroll("Goodbye!", 500);
 }
 
 // TIME FUNCTIONS
 void DisplayTime() {
+  static unsigned long checktime {0};
   if (checktime <= millis() + 5000) {
     Time();
     printString(timeStamp);
+    checktime = millis();
   }
 }
 
@@ -379,7 +410,12 @@ void DayStamp() {
 }
 
 void Time(void) {
+  static unsigned long checktime {0}; 
   if (checktime <= millis() - 500) {
+    static uint8_t lastminute {60}; // 
+    static uint8_t lasthour {25}; //
+    static uint8_t lastday; //
+    static uint8_t lastmonth; //
     while(!timeClient.update()) {
       timeClient.forceUpdate();
     }
@@ -410,6 +446,7 @@ void Time(void) {
         }
       }
     }
+    checktime = millis();
   }
 }
 
@@ -458,8 +495,9 @@ if (WiFi.status() != WL_CONNECTED) {
 }
 
 void reconnect() { // try connection every 30 seconds
+  static unsigned long mqttReconnect {0};
   if (!client.connected()) {
-    if(mqttReconnect <= millis() - 30000) {
+    if(mqttReconnect <= millis() - 60000) {
       digitalWrite(Led_BuiltIn, LOW);
       mx.clear();
       TranscodeScroll("Attempting MQTT connection", 250);
