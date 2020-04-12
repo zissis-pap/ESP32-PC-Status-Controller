@@ -2,10 +2,18 @@
 #include <WiFi.h>
 #include <WiFiMulti.h>
 #include <WiFiUdp.h>
+#include <ESPmDNS.h>
+#include <ArduinoOTA.h>
 #include <HTTPClient.h>
 #include <MD_MAX72xx.h>
 #include <NTPClient.h>
 #include <PubSubClient.h>
+
+// Enable Second Core
+TaskHandle_t OnCore0;
+
+// Function to run on core 0
+void Core0(void *pvParameters);
 
 // OUTPUTS =========================================================================================
 struct Relays {
@@ -29,8 +37,10 @@ Switches Asus; // Create the switches set instance
 const char *ssid = "******"; // Your router's SSID
 const char *password = "******"; // Your router's WiFi password
 void setup_wifi();
+void HandleOTA();
 void DisplayIP();
 String ipaddress; // Stores the ESP's IP address
+boolean checkUpdate;
 
 // MQTT Broker - Connection ==========================================================================
 const char* mqtt_server = "192.168.1.50";
@@ -141,6 +151,16 @@ void delayAndClear(unsigned int x);
 void ClearInfo();
 
 void setup() {
+  // Create a task that will be executed on core 0 in the Core0() function, with priority 1.
+  xTaskCreatePinnedToCore(
+                    Core0,       /* Task function. */
+                    "OnCore0",   /* name of task. */
+                    10000,       /* Stack size of task */
+                    NULL,        /* parameter of the task */
+                    1,           /* priority of the task */
+                    &OnCore0,    /* Task handle to keep track of created task */
+                    0);          /* pin task to core 0 */
+  // Set up Inputs and Outputs
   pinMode(RelaySet.PR_Relay, OUTPUT);
   pinMode(RelaySet.RS_Relay, OUTPUT);
   pinMode(RelaySet.BL_LED_Relay, OUTPUT);
@@ -158,7 +178,33 @@ void setup() {
   mx.begin();
   TranscodeScroll("MAXIMUS-III", 250);
   mx.clear();
+  WiFi.mode(WIFI_STA);
   setup_wifi(); // Set up WIFI
+  ArduinoOTA.setHostname("PC_Controller");
+  ArduinoOTA.setPassword("MAXIMUS");
+  ArduinoOTA
+    .onStart([]() {
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      mx.clear();
+      printString("D.CODE");
+    })
+    .onEnd([]() {
+      mx.clear();
+      printString("END");
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println(F("Auth Failed"));
+      else if (error == OTA_BEGIN_ERROR) Serial.println(F("Begin Failed"));
+      else if (error == OTA_CONNECT_ERROR) Serial.println(F("Connect Failed"));
+      else if (error == OTA_RECEIVE_ERROR) Serial.println(F("Receive Failed"));
+      else if (error == OTA_END_ERROR) Serial.println(F("End Failed"));
+    });
+
+  ArduinoOTA.begin();
+  Serial.println(F("Ready"));
+  Serial.print(F("IP address: "));
+  Serial.println(WiFi.localIP());
   client.setServer(mqtt_server, 1883); // Set up MQTT broker
   reconnect();
   client.setCallback(callback);
@@ -166,12 +212,12 @@ void setup() {
   // Set offset time in seconds to adjust for your timezone, for example:
   // GMT +1 = 3600
   // GMT -1 = -3600
-  timeClient.setTimeOffset(7200); 
+  timeClient.setTimeOffset(10800); 
   Time();
   mx.clear();
 }
 
-void loop() {
+void loop() { // Runs on core 1
   //mx.clear();
   CheckPCState();
   setup_wifi();
@@ -182,6 +228,14 @@ void loop() {
   }
   CheckSwitchState();
   PowerOnAction();
+}
+
+void Core0(void *pvParameters) { // Runs on core 0
+  // The while loop simulates the loop() function
+  while(1) {
+    // Your code to run on core 0
+    delay(10);
+  }
 }
 
 void callback(char* topic, byte* message, unsigned int length) {
@@ -206,6 +260,13 @@ void callback(char* topic, byte* message, unsigned int length) {
     }
     if (messageTemp == "timer") {
       
+    }
+    if (messageTemp == "update") {
+      checkUpdate = true;
+      HandleOTA();
+    }
+    if (messageTemp == "cancel") {
+      checkUpdate = false;
     }
     if (messageTemp == "date") {
       ShowDate();
@@ -465,7 +526,8 @@ String DayStamp(uint8_t day, uint8_t m_day, uint8_t month) {
   return Stamp;
 }
 
-void Time(void) {
+void Time(void) { 
+  // Time() function could be much smaller but we prefer indexing time and date values than calculating them each time they are needed
   static unsigned long checktime {0}; 
   if (checktime <= millis() - 500) {
     static uint8_t lastminute {60}; // 
@@ -535,6 +597,16 @@ int getYear() {
 }
 
 // CONNECTION FUNCTIONS
+void HandleOTA() {
+  printString("U.MODE");
+  while(checkUpdate) {
+    ArduinoOTA.handle();
+    client.loop();
+  }
+  mx.clear();
+  TranscodeScroll("Update cancelled", 500);
+}
+
 void setup_wifi() { // OK
 if (WiFi.status() != WL_CONNECTED) {
     // We start by connecting to a WiFi network
