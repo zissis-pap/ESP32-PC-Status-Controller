@@ -8,6 +8,7 @@ This project aims at providing additional Power-On, Shutdown, Reset and System H
 
 <h4>The node-red interface</h4>
 <p>The node-red interface connects with the ESP32 through the MQTT broker. Pointing your browser at your node-red's host ui IP returns the following dashboard:</p>
+<img src="https://user-images.githubusercontent.com/11696874/79850830-2164a600-83cd-11ea-9094-877fbcbbf44c.png">
 
 
 <h3>Required Libraries</h3>
