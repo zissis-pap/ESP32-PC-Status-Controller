@@ -14,11 +14,11 @@ This project aims at providing additional Power-On, Shutdown, Reset and System H
 <img src="https://user-images.githubusercontent.com/11696874/79852466-5d006f80-83cf-11ea-9b57-7f895436ae4e.png">
 
 <p>The next section is about the PC power functions</p>
-<p>In this section, the user may power-on, power-off, reset or halt their computer</p>
+<p>In this section, the user may power-on, power-off, reset or halt their computer.</p>
 <img src="https://user-images.githubusercontent.com/11696874/79852846-e7e16a00-83cf-11ea-8e07-f7e3cc70c120.png">
 
 <p>The final section contains the extra features of the PC-Status-Controller</p>
-<p>In this section the user may print the IP addresses of both the Controller and the MQTT broker. They may also print the date and time, see when the computer was last turned on and off and update the Controller's firmware using the OTA feature. Additional features like fetching weather and rss news will be added in the future</p> 
+<p>In this section the user may print the IP addresses of both the Controller and the MQTT broker. They may also print the date and time, see when the computer was last turned on and off and update the Controller's firmware using the OTA feature. Additional features like fetching weather and rss news will be added in the future.</p> 
 <img src="https://user-images.githubusercontent.com/11696874/79853047-37c03100-83d0-11ea-8592-7ca45eac81d7.png">
 
 <h3>The PC-Status-Controller's Panel</h3>
