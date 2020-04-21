@@ -23,7 +23,7 @@ This project aims at providing additional Power-On, Shutdown, Reset and System H
 
 <h3>The PC-Status-Controller's Panel</h3>
 <img src="https://user-images.githubusercontent.com/11696874/79854757-9686aa00-83d2-11ea-97d3-a9d5dd22a247.jpg">
-<p>The microcontroller, the 2ch Power-relay module and the 32x8 Dot led display are mounted in a 5.25" chassis which was taken from an old DVD-RW driver. For the the front panel, a semi-transparent surface is used so that the display can be easily seen.</p>
+<p>The microcontroller, the 2ch Power-relay module and the 32x8 Dot led display are placed in a 5.25" chassis which was taken from an old DVD-RW driver. For the the front-facing side, a semi-transparent panel is used so that the Dot-Matrix display can be easily read.</p>
 
 
 <h3>Required Libraries</h3>
