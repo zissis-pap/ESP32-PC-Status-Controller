@@ -7,7 +7,7 @@ This project aims at providing additional Power-On, Shutdown, Reset and System H
 <p>The system is built with the <a href="https://www.espressif.com/en/products/hardware/esp32/overview">ESP32 microcontroller</a> and is connected to the computer's motherboard front-panel header. It is also connected to the Computer's case power-on and reset switches. In order to use the remote capabilities, a system with <a href="https://nodered.org/">node-red</a> and <a href="https://mqtt.org/">mqtt broker</a> is required (you may use a R-PI for that). The system itself is composed of an ESP32 microcontroller, a 32x8 Dot Matrix Led Display and 2ch, 5v Power-Relay module.</p> 
 
 <h3>The node-red interface</h3>
-<p>The node-red interface connects with the ESP32 through the MQTT broker. Pointing your browser at your node-red's host ui IP returns the following dashboard:</p>
+<p>The node-red interface connects with the ESP32 through the MQTT broker. Pointing your browser at your node-red's host ui IP address returns the following dashboard:</p>
 <img src="https://user-images.githubusercontent.com/11696874/79850830-2164a600-83cd-11ea-9094-877fbcbbf44c.png">
 <p>There is a total of 10 elements on the dashboard and are organised in three sections according to their function. The first one is the Display where the pc status and the actions of the microcontroller are displayed.</p>
 <p>The display prints info about the pc status, for example, if the computer is off it prints the "PC is off" message. It also prints the actions taken or requested by the microcontroller.</p>
